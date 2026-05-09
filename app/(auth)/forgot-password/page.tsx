@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createClient } from "@/lib/supabase/client";
+import { createOptionalClient } from "@/lib/supabase/client";
+import { SUPABASE_CONFIG_ERROR } from "@/lib/supabase/config";
 
 const schema = z.object({ email: z.string().email("Masukkan email yang valid") });
 
@@ -19,9 +20,14 @@ export default function ForgotPasswordPage() {
     handleSubmit,
     formState: { errors }
   } = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema) });
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => createOptionalClient(), []);
 
   async function onSubmit(values: z.infer<typeof schema>) {
+    if (!supabase) {
+      toast.error(SUPABASE_CONFIG_ERROR);
+      return;
+    }
+
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
       redirectTo: `${location.origin}/settings`
@@ -43,7 +49,12 @@ export default function ForgotPasswordPage() {
           <Input type="email" placeholder="you@company.com" autoComplete="email" {...register("email")} />
           {errors.email && <span className="text-xs text-destructive">{errors.email.message}</span>}
         </label>
-        <Button className="h-11 w-full rounded-2xl shadow-lg shadow-indigo-500/20" disabled={loading}>
+        {!supabase && (
+          <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {SUPABASE_CONFIG_ERROR}
+          </p>
+        )}
+        <Button className="h-11 w-full rounded-2xl shadow-lg shadow-indigo-500/20" disabled={loading || !supabase}>
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           {loading ? "Mengirim..." : "Send link"}
         </Button>

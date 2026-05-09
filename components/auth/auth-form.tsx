@@ -11,7 +11,8 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createClient } from "@/lib/supabase/client";
+import { createOptionalClient } from "@/lib/supabase/client";
+import { SUPABASE_CONFIG_ERROR } from "@/lib/supabase/config";
 import { cn } from "@/lib/utils";
 
 const schema = z.object({
@@ -26,7 +27,7 @@ type AuthValues = z.infer<typeof schema>;
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => createOptionalClient(), []);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const {
@@ -42,6 +43,11 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const remember = watch("remember");
 
   async function onSubmit(values: AuthValues) {
+    if (!supabase) {
+      toast.error(SUPABASE_CONFIG_ERROR);
+      return;
+    }
+
     setLoading(true);
     if (values.remember) {
       localStorage.setItem("officeflow_remember_session", "true");
@@ -148,7 +154,13 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             </div>
           )}
 
-          <Button className="h-11 w-full rounded-2xl shadow-lg shadow-indigo-500/20" disabled={loading}>
+          {!supabase && (
+            <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {SUPABASE_CONFIG_ERROR}
+            </p>
+          )}
+
+          <Button className="h-11 w-full rounded-2xl shadow-lg shadow-indigo-500/20" disabled={loading || !supabase}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
             {loading ? "Memproses..." : mode === "login" ? "Login" : "Register"}
           </Button>

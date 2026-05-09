@@ -2,7 +2,7 @@
 
 import type { Session, User } from "@supabase/supabase-js";
 import { createContext, useEffect, useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createOptionalClient } from "@/lib/supabase/client";
 
 type AuthContextValue = {
   user: User | null;
@@ -14,12 +14,17 @@ type AuthContextValue = {
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => createOptionalClient(), []);
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
 
     supabase.auth.getSession().then(({ data }) => {
@@ -63,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut: async () => {
         localStorage.removeItem("officeflow_remember_session");
         sessionStorage.removeItem("officeflow_tab_session");
-        await supabase.auth.signOut();
+        await supabase?.auth.signOut();
       }
     }),
     [loading, session, supabase, user]
