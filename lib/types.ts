@@ -14,6 +14,7 @@ export type Employee = {
 
 export type Attendance = {
   id: string;
+  employeeId?: string;
   employeeName: string;
   date: string;
   checkIn: string;
@@ -46,4 +47,6 @@ export type DocumentRecord = {
   type: string;
   size: string;
   updatedAt: string;
+  storagePath?: string;
+  downloadUrl?: string;
 };

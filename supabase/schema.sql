@@ -124,14 +124,51 @@ create policy "admins manage finance" on public.finance_records for all to authe
 using (exists (select 1 from public.profiles where id = auth.uid() and role in ('super_admin', 'admin', 'manager')))
 with check (exists (select 1 from public.profiles where id = auth.uid() and role in ('super_admin', 'admin', 'manager')));
 
+create policy "authenticated manage attendance" on public.attendance for all to authenticated
+using (
+  exists (
+    select 1
+    from public.employees
+    where employees.id = attendance.employee_id
+      and lower(employees.email) = lower(auth.jwt() ->> 'email')
+  )
+  or exists (
+    select 1
+    from public.profiles
+    where profiles.id = auth.uid()
+      and profiles.role in ('super_admin', 'admin', 'manager')
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.employees
+    where employees.id = attendance.employee_id
+      and lower(employees.email) = lower(auth.jwt() ->> 'email')
+  )
+  or exists (
+    select 1
+    from public.profiles
+    where profiles.id = auth.uid()
+      and profiles.role in ('super_admin', 'admin', 'manager')
+  )
+);
+
 create policy "users update own profile" on public.profiles for update to authenticated
 using (id = auth.uid())
 with check (id = auth.uid());
 
 create policy "authenticated manage own tasks" on public.tasks for all to authenticated using (true) with check (true);
 
-create policy "authenticated upload documents" on public.documents for insert to authenticated with check (true);
+create policy "authenticated upload documents" on public.documents for insert to authenticated with check (owner_id = auth.uid());
+create policy "authenticated update documents" on public.documents for update to authenticated using (true) with check (true);
 
 insert into storage.buckets (id, name, public)
 values ('documents', 'documents', true)
 on conflict (id) do nothing;
+
+create policy "authenticated read document files" on storage.objects for select to authenticated
+using (bucket_id = 'documents');
+
+create policy "authenticated upload document files" on storage.objects for insert to authenticated
+with check (bucket_id = 'documents' and auth.uid()::text = (storage.foldername(name))[1]);
